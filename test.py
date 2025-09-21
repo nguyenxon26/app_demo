@@ -1,3 +1,7 @@
+# .\venv1\Scripts\activate
+# pip install -r requirements.txt
+# pip freeze > requirements.txt
+
 import pandas as pd
 import streamlit as st 
 import duckdb
@@ -16,15 +20,15 @@ key_in = pd.read_csv(
     usecols= range(36)
 )
 
-gid2 = "1005669772"
-url2 = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid2}"
+# gid2 = "1005669772"
+# url2 = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid2}"
 
-ttkh = pd.read_csv(
-    url2,
-    skiprows=0,
-    header = 0,
-    usecols= range(3)
-)
+# ttkh = pd.read_csv(
+#     url2,
+#     skiprows=0,
+#     header = 0,
+#     usecols= range(3)
+# )
 
 gid3 = "782116804"
 url3 = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid3}"
@@ -93,12 +97,12 @@ on a.khach_hang = b.khach_hang
 '''
 nav_daily = conn.execute(query1).fetchdf()
 nav_daily_renamed = nav_daily.rename(columns={
-    'khach_hang' : 'Khách hàng',
     'lai_lo_sau_cung': 'Lãi lỗ sau cùng',
     'du_no_hien_tai': 'Dư nợ hiện tại',
     'gia_tri_danh_muc': 'Giá trị danh mục',
     'ti_le': 'Tỉ lệ'
 })
+# print(nav_daily)
 
 
 # 2.Tạo bảng checkend day
@@ -166,6 +170,8 @@ pivot_2 = pd.concat([pivot_2, tong_hang])
 pivot_2.columns = [col.strftime('%d/%m/%Y') for col in pivot_2.columns]
 # print(pivot_2)
 
+
+# Tạo bảng tổng lãi vay theo ngày
 query4 = '''
 select ngay, sum(lai_vay_ngay) as lai_vay_tong
 from NAV_batch
@@ -178,6 +184,24 @@ lai_tong.set_index('ngay', inplace=True)
 
 # # Streamlit UI
 
+# 🔍 Bước 1: Tạo selectbox chọn khách hàng
+customer_list = nav_daily['khach_hang'].unique()
+selected_customer = st.selectbox("Chọn khách hàng", customer_list)
+
+# 🔎 Bước 2: Lọc dữ liệu theo khách hàng được chọn
+nav_daily_filtered = nav_daily[nav_daily['khach_hang'] == selected_customer]
+sorted_pivot_filtered = sorted_pivot[sorted_pivot['khach_hang'] == selected_customer]
+pivot_2_filtered = pivot_2[pivot_2['khach_hang'] == selected_customer]
+# lai_tong_filtered = lai_tong[lai_tong['Khách hàng'] == selected_customer]
+
+nav_daily_renamed = nav_daily_filtered.rename(columns={
+    'khach_hang' : 'Khách hàng',
+    'lai_lo_sau_cung': 'Lãi lỗ sau cùng',
+    'du_no_hien_tai': 'Dư nợ hiện tại',
+    'gia_tri_danh_muc': 'Giá trị danh mục',
+    'ti_le': 'Tỉ lệ'
+})
+
 st.title('🧮 Dashboard Khách hàng')
 st.header('📈 NAV ngày')
 st.dataframe(nav_daily_renamed.style.format({
@@ -187,26 +211,18 @@ st.dataframe(nav_daily_renamed.style.format({
     'Giá trị danh mục':'{:,.0f}',
     'Tỉ lệ': '{:.2%}'})
         .apply(lambda x: ['background-color: lightgreen' if v == x.max() else '' for v in x], 
-               subset=[col for col in nav_daily_renamed.columns if col != 'Khách hàng'])
+               subset=[col for col in nav_daily_renamed.columns if col != 'khach_hang'])
         )
 
 
 st.header('🛒 Số lượng mua ')
-st.dataframe(sorted_pivot.style.format('{:,.0f}'))
+st.dataframe(sorted_pivot_filtered.style.format('{:,.0f}'))
 
-
-# khach_hang_list = NAV_batch['khach_hang'].unique()
-# selected_khach = st.selectbox('Chọn khách hàng', khach_hang_list)
-# filtered_data = NAV_batch[NAV_batch['khach_hang'] == selected_khach]
 
 st.header('💰 Lãi vay theo ngày')
-st.dataframe(pivot_2.style.format('{:,.0f}')
+st.dataframe(pivot_2_filtered.style.format('{:,.0f}')
             .highlight_max(axis=1, color='lightgreen')
             # .highlight_min(axis=1, color='lightcoral')
             )
 st.subheader("📊 Tổng lãi vay theo ngày")
 st.line_chart(lai_tong['lai_vay_tong'])
-
-
-
-
