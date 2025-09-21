@@ -184,15 +184,20 @@ lai_tong.set_index('ngay', inplace=True)
 
 # # Streamlit UI
 
-# 🔍 Bước 1: Tạo selectbox chọn khách hàng
+# Tạo selectbox chọn khách hàng
 customer_list = nav_daily['khach_hang'].unique()
-selected_customer = st.selectbox("Chọn khách hàng", customer_list)
+selected_customer = st.selectbox("Chọn khách hàng 🔎", customer_list)
 
-# 🔎 Bước 2: Lọc dữ liệu theo khách hàng được chọn
+# Lọc dữ liệu theo khách hàng được chọn
 nav_daily_filtered = nav_daily[nav_daily['khach_hang'] == selected_customer]
-sorted_pivot_filtered = sorted_pivot[sorted_pivot['khach_hang'] == selected_customer]
+if selected_customer in sorted_pivot.index:
+    sorted_pivot_filtered = sorted_pivot.loc[[selected_customer]]
+else:
+    sorted_pivot_filtered = sorted_pivot  # fallback nếu không có khách hàng này
 pivot_2_filtered = pivot_2[pivot_2['khach_hang'] == selected_customer]
 # lai_tong_filtered = lai_tong[lai_tong['Khách hàng'] == selected_customer]
+
+print(nav_daily)
 
 nav_daily_renamed = nav_daily_filtered.rename(columns={
     'khach_hang' : 'Khách hàng',
@@ -202,7 +207,7 @@ nav_daily_renamed = nav_daily_filtered.rename(columns={
     'ti_le': 'Tỉ lệ'
 })
 
-st.title('🧮 Dashboard Khách hàng')
+# st.title('🧮 Dashboard Khách hàng')
 st.header('📈 NAV ngày')
 st.dataframe(nav_daily_renamed.style.format({
     'NAV':'{:,.0f}',
