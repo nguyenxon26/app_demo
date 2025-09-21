@@ -93,7 +93,7 @@ on a.khach_hang = b.khach_hang
 '''
 nav_daily = conn.execute(query1).fetchdf()
 nav_daily_renamed = nav_daily.rename(columns={
-    'khach_hang' : 'Khách hàng'
+    'khach_hang' : 'Khách hàng',
     'lai_lo_sau_cung': 'Lãi lỗ sau cùng',
     'du_no_hien_tai': 'Dư nợ hiện tại',
     'gia_tri_danh_muc': 'Giá trị danh mục',
@@ -206,4 +206,5 @@ st.dataframe(pivot_2.style.format('{:,.0f}')
             )
 st.subheader("📊 Tổng lãi vay theo ngày")
 st.line_chart(lai_tong['lai_vay_tong'])
+
 
