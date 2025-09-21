@@ -167,6 +167,7 @@ group by ngay
 '''
 
 lai_tong = conn.execute(query4).fetchdf()
+lai_tong.set_index('ngay', inplace=True)
 # print(lai_tong)
 
 # # Streamlit UI
@@ -198,4 +199,4 @@ st.dataframe(pivot_2.style.format('{:,.0f}')
             # .highlight_min(axis=1, color='lightcoral')
             )
 st.subheader("📊 Tổng lãi vay theo ngày")
-st.line_chart(lai_tong)
+st.line_chart(lai_tong['lai_vay_tong'])
