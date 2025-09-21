@@ -242,7 +242,7 @@ st.dataframe(nav_daily_renamed.style.format({
     )
 
 st.header('🛒 Số lượng mua ')
-st.dataframe(sorted_pivot.fillna("").style.format('{:,.0f}'))
+st.dataframe(sorted_pivot.style.format('{:,.0f}'))
 
 st.header('💰 Lãi vay theo ngày')
 
@@ -270,3 +270,4 @@ st.dataframe(pivot_2_combined.style.format(fmt_dict, na_rep="")
 
 st.subheader("📊 Tổng lãi vay theo ngày")
 st.line_chart(lai_tong['lai_vay_tong'])
+
