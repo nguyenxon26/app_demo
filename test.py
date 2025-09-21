@@ -260,8 +260,8 @@ def highlight_pct(val):
     if isinstance(val, str) and '%' in val:
         if '-' in val:
             return 'color: red'
-    else:
-        return 'color: green'
+        else:
+            return 'color: green'
     return ''
 
 st.dataframe(pivot_2_combined.style.format(fmt_dict, na_rep="")
@@ -270,4 +270,5 @@ st.dataframe(pivot_2_combined.style.format(fmt_dict, na_rep="")
 
 st.subheader("📊 Tổng lãi vay theo ngày")
 st.line_chart(lai_tong['lai_vay_tong'])
+
 
