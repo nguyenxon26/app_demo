@@ -184,22 +184,20 @@ lai_tong.set_index('ngay', inplace=True)
 
 # # Streamlit UI
 
-# Tạo selectbox chọn khách hàng
-customer_list = nav_daily['khach_hang'].unique()
-selected_customer = st.selectbox("Chọn khách hàng 🔎", customer_list)
+# # Tạo selectbox chọn khách hàng
+# customer_list = nav_daily['khach_hang'].unique()
+# selected_customer = st.selectbox("Chọn khách hàng 🔎", customer_list)
 
-# Lọc dữ liệu theo khách hàng được chọn
-nav_daily_filtered = nav_daily[nav_daily['khach_hang'] == selected_customer]
-if selected_customer in sorted_pivot.index:
-    sorted_pivot_filtered = sorted_pivot.loc[[selected_customer]]
-else:
-    sorted_pivot_filtered = sorted_pivot  # fallback nếu không có khách hàng này
-pivot_2_filtered = pivot_2[pivot_2['khach_hang'] == selected_customer]
-# lai_tong_filtered = lai_tong[lai_tong['Khách hàng'] == selected_customer]
+# # Lọc dữ liệu theo khách hàng được chọn
+# nav_daily_filtered = nav_daily[nav_daily['khach_hang'] == selected_customer]
+# if selected_customer in sorted_pivot.index:
+#     sorted_pivot_filtered = sorted_pivot.loc[[selected_customer]]
+# else:
+#     sorted_pivot_filtered = sorted_pivot  # fallback nếu không có khách hàng này
+# pivot_2_filtered = pivot_2[pivot_2['khach_hang'] == selected_customer]
+# # lai_tong_filtered = lai_tong[lai_tong['Khách hàng'] == selected_customer]
 
-print(nav_daily)
-
-nav_daily_renamed = nav_daily_filtered.rename(columns={
+nav_daily_renamed = nav_daily.rename(columns={
     'khach_hang' : 'Khách hàng',
     'lai_lo_sau_cung': 'Lãi lỗ sau cùng',
     'du_no_hien_tai': 'Dư nợ hiện tại',
@@ -216,16 +214,16 @@ st.dataframe(nav_daily_renamed.style.format({
     'Giá trị danh mục':'{:,.0f}',
     'Tỉ lệ': '{:.2%}'})
         .apply(lambda x: ['background-color: lightgreen' if v == x.max() else '' for v in x], 
-               subset=[col for col in nav_daily_renamed.columns if col != 'khach_hang'])
+               subset=[col for col in nav_daily_renamed.columns if col != 'Khách hàng'])
         )
 
 
 st.header('🛒 Số lượng mua ')
-st.dataframe(sorted_pivot_filtered.style.format('{:,.0f}'))
+st.dataframe(sorted_pivot.style.format('{:,.0f}'))
 
 
 st.header('💰 Lãi vay theo ngày')
-st.dataframe(pivot_2_filtered.style.format('{:,.0f}')
+st.dataframe(pivot_2.style.format('{:,.0f}')
             .highlight_max(axis=1, color='lightgreen')
             # .highlight_min(axis=1, color='lightcoral')
             )
