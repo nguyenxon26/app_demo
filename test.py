@@ -227,7 +227,7 @@ nav_daily_renamed = nav_daily.rename(columns={
 
 st.title('🧮 Dashboard Khách hàng')
 
-col1, col2 = st.columns(2)
+col1, spacer, col2 = st.columns([1, 0.5, 1])
 
 with col1:
     st.header('📈 NAV ngày')
@@ -245,10 +245,21 @@ with col2:
     st.header('🛒 Số lượng mua ')
     st.dataframe(sorted_pivot.style.format('{:,.0f}',na_rep = ""))
 
-col3, col4 = st.columns(2)
+col3, spacer, col4 = st.columns([1, 0.5, 1])
 
 with col3:
     st.header('💰 Lãi vay theo ngày')
+
+    fmt_dict = {}
+
+    for col in pivot_2_combined.columns:
+        if '(% thay đổi)' in col:
+        # Không format lại vì đã là chuỗi có %
+            continue
+        else:
+        # Format có dấu phẩy cho số
+            fmt_dict[col] = '{:,.0f}'
+
     def highlight_pct(val):
         if isinstance(val, str) and '%' in val:
             if '-' in val:
@@ -257,7 +268,7 @@ with col3:
             return 'color: green'
         return ''
 
-    st.dataframe(pivot_2_combined.style.format('{:,.0f}', na_rep= "")
+    st.dataframe(pivot_2_combined.style.format(fmt_dict, na_rep="")
             .applymap(highlight_pct)
             )
 
