@@ -205,7 +205,7 @@ nav_daily_renamed = nav_daily.rename(columns={
     'ti_le': 'Tỉ lệ'
 })
 
-# st.title('🧮 Dashboard Khách hàng')
+st.title('🧮 Dashboard Khách hàng')
 st.header('📈 NAV ngày')
 st.dataframe(nav_daily_renamed.style.format({
     'NAV':'{:,.0f}',
@@ -229,3 +229,4 @@ st.dataframe(pivot_2.style.format('{:,.0f}')
             )
 st.subheader("📊 Tổng lãi vay theo ngày")
 st.line_chart(lai_tong['lai_vay_tong'])
+
