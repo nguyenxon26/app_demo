@@ -180,14 +180,14 @@ lai_tong.set_index('ngay', inplace=True)
 
 st.title('🧮 Dashboard Khách hàng')
 st.header('📈 NAV ngày')
-st.dataframe(nav_daily.style.format({
+st.dataframe(nav_daily_renamed.style.format({
     'NAV':'{:,.0f}',
     'Lãi lỗ sau cùng':'{:,.0f}', 
     'Dư nợ hiện tại':'{:,.0f}',
     'Giá trị danh mục':'{:,.0f}',
     'Tỉ lệ': '{:.2%}'})
         .apply(lambda x: ['background-color: lightgreen' if v == x.max() else '' for v in x], 
-               subset=[col for col in nav_daily.columns if col != 'khach_hang'])
+               subset=[col for col in nav_daily.columns if col != 'Khách hàng'])
         )
 
 
@@ -206,5 +206,6 @@ st.dataframe(pivot_2.style.format('{:,.0f}')
             )
 st.subheader("📊 Tổng lãi vay theo ngày")
 st.line_chart(lai_tong['lai_vay_tong'])
+
 
 
