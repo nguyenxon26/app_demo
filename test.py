@@ -227,25 +227,12 @@ nav_daily_renamed = nav_daily.rename(columns={
 
 st.title('🧮 Dashboard Khách hàng')
 
-col1, spacer, col2 = st.columns([1, 0.5, 1])
+col1, spacer, col2 = st.columns([3, 0.5, 3])
 
 with col1:
     st.header('📈 NAV ngày')
     st.dataframe(nav_daily_renamed.style.format({
-    'NAV':'{:,.0f}',
-    'Lãi lỗ sau cùng':'{:,.0f}', 
-    'Dư nợ hiện tại':'{:,.0f}',
-    'Giá trị danh mục':'{:,.0f}',
-    'Tỉ lệ': '{:.2%}'},na_rep="")
-        .apply(lambda x: ['background-color: lightgreen' if v == x.max() else '' for v in x], 
-               subset=[col for col in nav_daily_renamed.columns if col != 'Khách hàng'])
-        )
-
-with col2:
-    st.header('🛒 Số lượng mua ')
-    st.dataframe(sorted_pivot.style.format('{:,.0f}',na_rep = ""))
-
-col3, spacer, col4 = st.columns([1, 0.5, 1])
+    '3])
 
 with col3:
     st.header('💰 Lãi vay theo ngày')
@@ -275,3 +262,4 @@ with col3:
 with col4:
     st.subheader("📊 Tổng lãi vay theo ngày")
     st.line_chart(lai_tong['lai_vay_tong'])
+
