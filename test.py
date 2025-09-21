@@ -1,3 +1,7 @@
+# .\venv1\Scripts\activate
+# pip install -r requirements.txt
+# pip freeze > requirements.txt
+
 import pandas as pd
 import streamlit as st 
 import duckdb
@@ -226,54 +230,43 @@ nav_daily_renamed = nav_daily.rename(columns={
 })
 
 st.title('🧮 Dashboard Khách hàng')
+st.header('📈 NAV ngày')
+st.dataframe(nav_daily_renamed.style.format({
+'NAV':'{:,.0f}',
+'Lãi lỗ sau cùng':'{:,.0f}', 
+'Dư nợ hiện tại':'{:,.0f}',
+'Giá trị danh mục':'{:,.0f}',
+'Tỉ lệ': '{:.2%}'},na_rep="")
+    .apply(lambda x: ['background-color: lightgreen' if v == x.max() else '' for v in x], 
+            subset=[col for col in nav_daily_renamed.columns if col != 'Khách hàng'])
+    )
 
-col1, spacer, col2 = st.columns([3, 0.5, 3])
+st.header('🛒 Số lượng mua ')
+st.dataframe(sorted_pivot.fillna("").style.format('{:,.0f}'))
 
-with col1:
-    st.header('📈 NAV ngày')
-    st.dataframe(nav_daily_renamed.style.format({
-    'NAV':'{:,.0f}',
-    'Lãi lỗ sau cùng':'{:,.0f}', 
-    'Dư nợ hiện tại':'{:,.0f}',
-    'Giá trị danh mục':'{:,.0f}',
-    'Tỉ lệ': '{:.2%}'},na_rep="")
-        .apply(lambda x: ['background-color: lightgreen' if v == x.max() else '' for v in x], 
-               subset=[col for col in nav_daily_renamed.columns if col != 'Khách hàng'])
+st.header('💰 Lãi vay theo ngày')
+
+fmt_dict = {}
+
+for col in pivot_2_combined.columns:
+    if '(% thay đổi)' in col:
+    # Không format lại vì đã là chuỗi có %
+        continue
+    else:
+    # Format có dấu phẩy cho số
+        fmt_dict[col] = '{:,.0f}'
+
+def highlight_pct(val):
+    if isinstance(val, str) and '%' in val:
+        if '-' in val:
+            return 'color: red'
+    else:
+        return 'color: green'
+    return ''
+
+st.dataframe(pivot_2_combined.style.format(fmt_dict, na_rep="")
+        .applymap(highlight_pct)
         )
 
-with col2:
-    st.header('🛒 Số lượng mua ')
-    st.dataframe(sorted_pivot.style.format('{:,.0f}',na_rep =""))
-
-col3, spacer, col4 = st.columns([3, 0.5, 3])
-
-with col3:
-    st.header('💰 Lãi vay theo ngày')
-
-    fmt_dict = {}
-
-    for col in pivot_2_combined.columns:
-        if '(% thay đổi)' in col:
-        # Không format lại vì đã là chuỗi có %
-            continue
-        else:
-        # Format có dấu phẩy cho số
-            fmt_dict[col] = '{:,.0f}'
-
-    def highlight_pct(val):
-        if isinstance(val, str) and '%' in val:
-            if '-' in val:
-                return 'color: red'
-        else:
-            return 'color: green'
-        return ''
-
-    st.dataframe(pivot_2_combined.style.format(fmt_dict, na_rep="")
-            .applymap(highlight_pct)
-            )
-
-with col4:
-    st.subheader("📊 Tổng lãi vay theo ngày")
-    st.line_chart(lai_tong['lai_vay_tong'])
-
-
+st.subheader("📊 Tổng lãi vay theo ngày")
+st.line_chart(lai_tong['lai_vay_tong'])
