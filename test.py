@@ -780,9 +780,10 @@ st.dataframe(sorted_pivot.style.format('{:,.0f}'))
 # filtered_data = NAV_batch[NAV_batch['khach_hang'] == selected_khach]
 
 st.header('💰 Lãi vay theo ngày')
-st.table(pivot_2.style.format('{:,.0f}')
+st.dataframe(pivot_2.style.format('{:,.0f}')
             .highlight_max(axis=1, color='lightgreen')
             # .highlight_min(axis=1, color='lightcoral')
             )
 st.subheader("📊 Tổng lãi vay theo ngày")
 st.line_chart(pivot_2.sum(axis=0))
+
