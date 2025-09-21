@@ -1,7 +1,3 @@
-# .\venv1\Scripts\activate
-# pip install -r requirements.txt
-# pip freeze > requirements.txt
-
 import pandas as pd
 import streamlit as st 
 import duckdb
@@ -102,7 +98,6 @@ nav_daily_renamed = nav_daily.rename(columns={
     'gia_tri_danh_muc': 'Giá trị danh mục',
     'ti_le': 'Tỉ lệ'
 })
-# print(nav_daily)
 
 
 # 2.Tạo bảng checkend day
@@ -141,6 +136,7 @@ sorted_pivot = pivot.reindex(
     columns=list(sorted_columns) 
 )
 
+
 # 3.Tạo bảng lãi vay theo ngày
 query3 = '''
 select khach_hang, ngay, lai_vay_ngay
@@ -168,7 +164,44 @@ tong_hang = pd.DataFrame(pivot_2.sum(axis=0)).T
 tong_hang.index = ['Tổng']
 pivot_2 = pd.concat([pivot_2, tong_hang])
 pivot_2.columns = [col.strftime('%d/%m/%Y') for col in pivot_2.columns]
-# print(pivot_2)
+# Tính % thay đổi theo hàng (khách hàng)
+pivot_2_pct = pivot_2.pct_change(axis=1)*100
+pivot_2_pct = pivot_2_pct.round(2)
+# Tạo DataFrame xen kẽ giá trị và phần trăm
+merged_cols =[]
+for col in pivot_2.columns:
+    merged_cols.append(col)
+    if col != pivot_2.columns[0]:  # bỏ cột đầu vì không có % thay đổi
+        merged_cols.append(f'{col} (% thay đổi)')
+
+# Tạo DataFrame trống để chứa kết quả
+pivot_2_combined = pd.DataFrame(index=pivot_2.index, columns=merged_cols)
+
+for col in pivot_2.columns:
+    pivot_2_combined[col] = pivot_2[col]
+    if col != pivot_2.columns[0]:
+        pivot_2_combined[f'{col} (% thay đổi)'] = pivot_2_pct[col].map(lambda x: f'{x:.2f}%' if pd.notna(x) else "")
+# Chuyển các cột ngày về datetime để sort rồi đảo ngược
+date_cols = [col for col in pivot_2.columns]
+other_cols = [col for col in pivot_2_combined.columns if not isinstance(col, pd.Timestamp)]
+
+# Lấy thứ tự mới theo ngày giảm dần
+from datetime import datetime
+
+sorted_dates = sorted(
+    date_cols,
+    key=lambda x: datetime.strptime(x, "%d/%m/%Y"),
+    reverse=True
+)
+
+final_col_order = []
+for col in sorted_dates:
+    final_col_order.append(col)
+    percent_col = f'{col} (% thay đổi)'
+    if percent_col in pivot_2_combined.columns:
+        final_col_order.append(percent_col)
+
+pivot_2_combined = pivot_2_combined[final_col_order]
 
 
 # Tạo bảng tổng lãi vay theo ngày
@@ -180,22 +213,9 @@ group by ngay
 
 lai_tong = conn.execute(query4).fetchdf()
 lai_tong.set_index('ngay', inplace=True)
-# print(lai_tong)
 
-# # Streamlit UI
 
-# # Tạo selectbox chọn khách hàng
-# customer_list = nav_daily['khach_hang'].unique()
-# selected_customer = st.selectbox("Chọn khách hàng 🔎", customer_list)
-
-# # Lọc dữ liệu theo khách hàng được chọn
-# nav_daily_filtered = nav_daily[nav_daily['khach_hang'] == selected_customer]
-# if selected_customer in sorted_pivot.index:
-#     sorted_pivot_filtered = sorted_pivot.loc[[selected_customer]]
-# else:
-#     sorted_pivot_filtered = sorted_pivot  # fallback nếu không có khách hàng này
-# pivot_2_filtered = pivot_2[pivot_2['khach_hang'] == selected_customer]
-# # lai_tong_filtered = lai_tong[lai_tong['Khách hàng'] == selected_customer]
+# Streamlit UI
 
 nav_daily_renamed = nav_daily.rename(columns={
     'khach_hang' : 'Khách hàng',
@@ -206,27 +226,41 @@ nav_daily_renamed = nav_daily.rename(columns={
 })
 
 st.title('🧮 Dashboard Khách hàng')
-st.header('📈 NAV ngày')
-st.dataframe(nav_daily_renamed.style.format({
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.header('📈 NAV ngày')
+    st.dataframe(nav_daily_renamed.style.format({
     'NAV':'{:,.0f}',
     'Lãi lỗ sau cùng':'{:,.0f}', 
     'Dư nợ hiện tại':'{:,.0f}',
     'Giá trị danh mục':'{:,.0f}',
-    'Tỉ lệ': '{:.2%}'})
+    'Tỉ lệ': '{:.2%}'},na_rep="")
         .apply(lambda x: ['background-color: lightgreen' if v == x.max() else '' for v in x], 
                subset=[col for col in nav_daily_renamed.columns if col != 'Khách hàng'])
         )
 
+with col2:
+    st.header('🛒 Số lượng mua ')
+    st.dataframe(sorted_pivot.style.format('{:,.0f}',na_rep = ""))
 
-st.header('🛒 Số lượng mua ')
-st.dataframe(sorted_pivot.style.format('{:,.0f}'))
+col3, col4 = st.columns(2)
 
+with col3:
+    st.header('💰 Lãi vay theo ngày')
+    def highlight_pct(val):
+        if isinstance(val, str) and '%' in val:
+            if '-' in val:
+                return 'color: red'
+        else:
+            return 'color: green'
+        return ''
 
-st.header('💰 Lãi vay theo ngày')
-st.dataframe(pivot_2.style.format('{:,.0f}')
-            .highlight_max(axis=1, color='lightgreen')
-            # .highlight_min(axis=1, color='lightcoral')
+    st.dataframe(pivot_2_combined.style.format('{:,.0f}', na_rep= "")
+            .applymap(highlight_pct)
             )
-st.subheader("📊 Tổng lãi vay theo ngày")
-st.line_chart(lai_tong['lai_vay_tong'])
 
+with col4:
+    st.subheader("📊 Tổng lãi vay theo ngày")
+    st.line_chart(lai_tong['lai_vay_tong'])
