@@ -233,24 +233,32 @@ nav_daily_renamed = nav_daily_renamed.replace([None, pd.NA, "None"], "")  # Hand
 nav_daily_renamed = nav_daily_renamed.fillna("")  # Handle NaN
 nav_daily_renamed.replace(0, "", inplace=True)  # Handle zeros
 
+# Convert specified columns to numeric, coercing errors to NaN
 numeric_columns = ['NAV', 'Lãi lỗ sau cùng', 'Dư nợ hiện tại', 'Giá trị danh mục', 'Tỉ lệ']
 for col in numeric_columns:
     nav_daily_renamed[col] = pd.to_numeric(nav_daily_renamed[col], errors='coerce')
 
+
+# print(nav_daily_renamed.isna().sum())
+print(nav_daily_renamed.apply(lambda x: x.isin([None]).sum()))
+
+# Display the dataframe in Streamlit with formatting
 st.title('🧮 Dashboard Khách hàng')
 st.header('📈 NAV ngày')
 st.dataframe(nav_daily_renamed.style.format({
-'NAV':'{:,.0f}',
-'Lãi lỗ sau cùng':'{:,.0f}', 
-'Dư nợ hiện tại':'{:,.0f}',
-'Giá trị danh mục':'{:,.0f}',
-'Tỉ lệ': '{:.2%}'},na_rep="")
-    .apply(lambda x: ['background-color: lightgreen' if v == x.max() else '' for v in x], 
-            subset=[col for col in nav_daily_renamed.columns if col != 'Khách hàng'])
-    )
+    'NAV': '{:,.0f}',
+    'Lãi lỗ sau cùng': '{:,.0f}',
+    'Dư nợ hiện tại': '{:,.0f}',
+    'Giá trị danh mục': '{:,.0f}',
+    'Tỉ lệ': '{:.2%}'
+}, na_rep="")  # Ensure NaN is displayed as empty string
+    .apply(lambda x: ['background-color: lightgreen' if v == x.max() else '' for v in x],
+           subset=[col for col in nav_daily_renamed.columns if col != 'Khách hàng'])
+)
+
 
 st.header('🛒 Số lượng mua ')
-st.dataframe(sorted_pivot.style.format('{:,.0f}'))
+st.dataframe(sorted_pivot.style.format('{:,.0f}'))  ##có lỗi ở fillna Unknown format code 'f' for object of type 'str'
 
 st.header('💰 Lãi vay theo ngày')
 
@@ -278,11 +286,3 @@ st.dataframe(pivot_2_combined.style.format(fmt_dict, na_rep="")
 
 st.subheader("📊 Tổng lãi vay theo ngày")
 st.line_chart(lai_tong['lai_vay_tong'])
-
-
-
-
-
-
-
-
