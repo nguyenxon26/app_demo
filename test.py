@@ -1,7 +1,3 @@
-# .\venv1\Scripts\activate
-# pip install -r requirements.txt
-# pip freeze > requirements.txt
-
 import pandas as pd
 import streamlit as st 
 import duckdb
@@ -68,6 +64,7 @@ conn.register('key_in',key_in)
 conn.register('NAV_batch',NAV_batch)
 
 
+
 # 1.Tạo bảng NAV real time
 
 query1 ='''
@@ -96,15 +93,10 @@ left join
 on a.khach_hang = b.khach_hang
 '''
 nav_daily = conn.execute(query1).fetchdf()
-nav_daily_renamed = nav_daily.rename(columns={
-    'lai_lo_sau_cung': 'Lãi lỗ sau cùng',
-    'du_no_hien_tai': 'Dư nợ hiện tại',
-    'gia_tri_danh_muc': 'Giá trị danh mục',
-    'ti_le': 'Tỉ lệ'
-})
 
 
 # 2.Tạo bảng checkend day
+
 query2 = '''
 select khach_hang, ma, so_luong_mua
 from key_in
@@ -113,7 +105,6 @@ and on_off = 'ON'
 and khach_hang is not null
 and so_luong_mua != 0
 '''
-
 checkend_day = conn.execute(query2).fetchdf()
 
 # Tạo pivot table với tổng (margins=True)
@@ -123,7 +114,7 @@ pivot = pd.pivot_table(
     index='khach_hang',
     columns='ma',
     aggfunc='sum',
-#   fill_value=None,
+    fill_value=None,
     margins=True,
     margins_name='Tong'
 )
@@ -143,10 +134,11 @@ sorted_pivot = pivot.reindex(
 
 # 3.Tạo bảng lãi vay theo ngày
 query3 = '''
-select khach_hang, ngay, lai_vay_ngay
+select khach_hang,
+    ngay,
+    lai_vay_ngay
 from NAV_batch
 '''
-
 lai_ngay = conn.execute(query3).fetchdf()
 
 # Tạo pivot table với tổng (margins=True)
@@ -155,68 +147,72 @@ pivot_2 = pd.pivot_table(
     values='lai_vay_ngay',
     index='khach_hang',
     columns='ngay',
-    aggfunc='sum'
-    # fill_value=None,
+    aggfunc='sum',
+    fill_value=None,
     # margins=True,
     # margins_name='Tong'
 )
-pivot_2 = pivot_2.sort_index(axis=1, ascending=True)
+# 1. Sắp xếp lại cột theo thời gian tăng dần
+pivot_2 = pivot_2.sort_index(axis=1)
+
+# 2. Sắp xếp theo tổng hàng
 pivot_2['__tong_tam__'] = pivot_2.sum(axis=1)
-pivot_2 = pivot_2.sort_values(by='__tong_tam__', ascending=False)
-pivot_2 = pivot_2.drop(columns='__tong_tam__')
+pivot_2 = pivot_2.sort_values(by='__tong_tam__', ascending=False).drop(columns='__tong_tam__')
+
+# 3. Thêm dòng tổng
 tong_hang = pd.DataFrame(pivot_2.sum(axis=0)).T
 tong_hang.index = ['Tổng']
 pivot_2 = pd.concat([pivot_2, tong_hang])
-pivot_2.columns = [col.strftime('%d/%m/%Y') for col in pivot_2.columns]
-# Tính % thay đổi theo hàng (khách hàng)
-pivot_2_pct = pivot_2.pct_change(axis=1)*100
-pivot_2_pct = pivot_2_pct.round(2)
-# Tạo DataFrame xen kẽ giá trị và phần trăm
-merged_cols =[]
-for col in pivot_2.columns:
-    merged_cols.append(col)
-    if col != pivot_2.columns[0]:  # bỏ cột đầu vì không có % thay đổi
-        merged_cols.append(f'{col} (% thay đổi)')
 
-# Tạo DataFrame trống để chứa kết quả
+# 4. Chuyển cột về datetime nếu chưa
+pivot_2.columns = pd.to_datetime(pivot_2.columns)
+
+# 5. Tính thay đổi tuyệt đối
+pivot_2_no_total = pivot_2.drop(index='Tổng')
+pivot_2_diff = pivot_2_no_total.diff(axis=1)
+pivot_2_diff = pd.concat([pivot_2_diff, pd.DataFrame(index=['Tổng'], columns=pivot_2_diff.columns)])
+
+# 6. Tạo cột xen kẽ: giá trị + thay đổi tuyệt đối
+merged_cols = []
+for col in pivot_2.columns:
+    col_str = col.strftime('%d/%m/%Y')
+    merged_cols.append(col_str)
+    if col != pivot_2.columns[0]:
+        merged_cols.append(f'{col_str} (thay đổi)')
+
+# 7. Tạo DataFrame kết hợp
 pivot_2_combined = pd.DataFrame(index=pivot_2.index, columns=merged_cols)
 
 for col in pivot_2.columns:
-    pivot_2_combined[col] = pivot_2[col]
+    col_str = col.strftime('%d/%m/%Y')
+    pivot_2_combined[col_str] = pivot_2[col]
     if col != pivot_2.columns[0]:
-        pivot_2_combined[f'{col} (% thay đổi)'] = pivot_2_pct[col].map(lambda x: f'{x:.2f}%' if pd.notna(x) else "")
-# Chuyển các cột ngày về datetime để sort rồi đảo ngược
-date_cols = [col for col in pivot_2.columns]
-other_cols = [col for col in pivot_2_combined.columns if not isinstance(col, pd.Timestamp)]
+        diff_series = pivot_2_diff[col].apply(lambda x: f"+{x:,.0f}" if x > 0 else (f"{x:,.0f}" if x < 0 else ""))
+        pivot_2_combined[f'{col_str} (thay đổi)'] = diff_series
 
-# Lấy thứ tự mới theo ngày giảm dần
-from datetime import datetime
-
-sorted_dates = sorted(
-    date_cols,
-    key=lambda x: datetime.strptime(x, "%d/%m/%Y"),
-    reverse=True
-)
-
+# 8. Đảo ngược thứ tự ngày
+sorted_dates = sorted(pivot_2.columns, reverse=True)
 final_col_order = []
 for col in sorted_dates:
-    final_col_order.append(col)
-    percent_col = f'{col} (% thay đổi)'
-    if percent_col in pivot_2_combined.columns:
-        final_col_order.append(percent_col)
+    col_str = col.strftime('%d/%m/%Y')
+    final_col_order.append(col_str)
+    diff_col = f'{col_str} (thay đổi)'
+    if diff_col in pivot_2_combined.columns:
+        final_col_order.append(diff_col)
 
 pivot_2_combined = pivot_2_combined[final_col_order]
 
 
 # Tạo bảng tổng lãi vay theo ngày
 query4 = '''
-select ngay, sum(lai_vay_ngay) as lai_vay_tong
+select ngay, 
+sum(lai_vay_ngay) as lai_vay_tong
 from NAV_batch
 group by ngay
 '''
-
 lai_tong = conn.execute(query4).fetchdf()
 lai_tong.set_index('ngay', inplace=True)
+
 
 
 # Streamlit UI
@@ -238,9 +234,9 @@ numeric_columns = ['NAV', 'Lãi lỗ sau cùng', 'Dư nợ hiện tại', 'Giá 
 for col in numeric_columns:
     nav_daily_renamed[col] = pd.to_numeric(nav_daily_renamed[col], errors='coerce')
 
-
 # print(nav_daily_renamed.isna().sum())
 print(nav_daily_renamed.apply(lambda x: x.isin([None]).sum()))
+
 
 # Display the dataframe in Streamlit with formatting
 st.title('🧮 Dashboard Khách hàng')
@@ -258,32 +254,42 @@ st.dataframe(nav_daily_renamed.style.format({
 
 
 st.header('🛒 Số lượng mua ')
-st.dataframe(sorted_pivot.style.format('{:,.0f}'))  ##có lỗi ở fillna Unknown format code 'f' for object of type 'str'
+st.dataframe(
+    sorted_pivot.style.format(lambda x: "" if pd.isna(x) or x == 0 else f"{x:,.0f}"))
+
 
 st.header('💰 Lãi vay theo ngày')
-
+# 1. Format có dấu phẩy cho số, trừ các cột "(thay đổi)"
 fmt_dict = {}
-
 for col in pivot_2_combined.columns:
-    if '(% thay đổi)' in col:
-    # Không format lại vì đã là chuỗi có %
+    if '(thay đổi)' in col:
         continue
-    else:
-    # Format có dấu phẩy cho số
-        fmt_dict[col] = '{:,.0f}'
-
-def highlight_pct(val):
-    if isinstance(val, str) and '%' in val:
-        if '-' in val:
-            return 'color: red'
-        else:
-            return 'color: green'
+    fmt_dict[col] = lambda x: '' if pd.isna(x) or x == 0 else f'{x:,.0f}'
+    
+# 2. Highlight cột "thay đổi" theo giá trị dương/âm
+def highlight(val):
+    if isinstance(val, str):
+        val = val.replace(",", "").replace("+", "").strip()
+        try:
+            num = float(val)
+            if num > 0:
+                return 'color: green'
+            elif num < 0:
+                return 'color: red'
+        except:
+            pass
     return ''
 
-st.dataframe(pivot_2_combined.style.format(fmt_dict, na_rep="")
-        .applymap(highlight_pct)
-        )
+# 3. Xác định các cột "thay đổi"
+thay_doi_cols = [col for col in pivot_2_combined.columns if '(thay đổi)' in col]
+
+# 4. Hiển thị
+st.dataframe(
+    pivot_2_combined.style
+        .format(fmt_dict)  # format các cột số, và ẩn giá trị 0, NaN
+        .applymap(highlight, subset=thay_doi_cols)  # tô màu chỉ ở cột "thay đổi"
+)
+
 
 st.subheader("📊 Tổng lãi vay theo ngày")
 st.line_chart(lai_tong['lai_vay_tong'])
-
