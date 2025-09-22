@@ -229,10 +229,10 @@ nav_daily_renamed = nav_daily.rename(columns={
     'ti_le': 'Tỉ lệ'
 })
 
-nav_daily_renamed = nav_daily_renamed.replace([None, pd.NA], "")  # Handle None and pd.NA
+nav_daily_renamed = nav_daily_renamed.replace([None, pd.NA, "None"], "")  # Handle None and pd.NA
 nav_daily_renamed = nav_daily_renamed.fillna("")  # Handle NaN
 nav_daily_renamed.replace(0, "", inplace=True)  # Handle zeros
-nav_daily_renamed.replace(0, "", inplace=True)
+
 numeric_columns = ['NAV', 'Lãi lỗ sau cùng', 'Dư nợ hiện tại', 'Giá trị danh mục', 'Tỉ lệ']
 for col in numeric_columns:
     nav_daily_renamed[col] = pd.to_numeric(nav_daily_renamed[col], errors='coerce')
@@ -278,6 +278,7 @@ st.dataframe(pivot_2_combined.style.format(fmt_dict, na_rep="")
 
 st.subheader("📊 Tổng lãi vay theo ngày")
 st.line_chart(lai_tong['lai_vay_tong'])
+
 
 
 
