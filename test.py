@@ -218,8 +218,6 @@ lai_tong.set_index('ngay', inplace=True)
 
 
 # Streamlit UI
-col1, col2 = st.columns(2)
-
 
 nav_daily_renamed = nav_daily.rename(columns={
     'khach_hang' : 'Khách hàng',
@@ -244,64 +242,66 @@ print(nav_daily_renamed.apply(lambda x: x.isin([None]).sum()))
 
 st.title('🧮 Dashboard Khách hàng')
 
-# Tạo 2 cột
-col1, col2 = st.columns(2)
-
-with col1:
-    st.header('📈 NAV ngày')
-    st.dataframe(nav_daily_renamed.style.format({
+# NAV ngày
+st.header('📈 NAV ngày')
+st.dataframe(
+    nav_daily_renamed.style.format({
         'NAV': '{:,.0f}',
         'Lãi lỗ sau cùng': '{:,.0f}',
         'Dư nợ hiện tại': '{:,.0f}',
         'Giá trị danh mục': '{:,.0f}',
         'Tỉ lệ': '{:.2%}'
     }, na_rep="")
-        .apply(lambda x: ['background-color: lightgreen' if v == x.max() else '' for v in x],
-               subset=[col for col in nav_daily_renamed.columns if col != 'Khách hàng']),
-        height=600
-    )
+    .apply(lambda x: ['background-color: lightgreen' if v == x.max() else '' for v in x],
+           subset=[col for col in nav_daily_renamed.columns if col != 'Khách hàng']),
+    height=600
+)
 
-    st.markdown("<br>", unsafe_allow_html=True)  # Khoảng cách giữa 2 bảng
+# Khoảng cách lớn giữa các phần
+st.markdown("<br><br>")  # hoặc dùng <br><br> cho khoảng trắng
 
-    st.header('💰 Lãi vay theo ngày')
-    fmt_dict = {}
-    for col in pivot_2_combined.columns:
-        if '(thay đổi)' in col:
-            continue
+# Số lượng mua
+st.header('🛒 Số lượng mua')
+st.dataframe(
+    sorted_pivot.style.format(lambda x: "" if pd.isna(x) or x == 0 else f"{x:,.0f}"),
+    height=600
+)
+
+st.markdown("<br><br>")
+
+# Lãi vay theo ngày (chi tiết)
+st.header('💰 Lãi vay theo ngày')
+
+# Định dạng & tô màu các cột
+fmt_dict = {}
+for col in pivot_2_combined.columns:
+    if '(thay đổi)' not in col:
         fmt_dict[col] = lambda x: '' if pd.isna(x) or x == 0 else f'{x:,.0f}'
 
-    def highlight(val):
-        if isinstance(val, str):
-            val = val.replace(",", "").replace("+", "").strip()
-            try:
-                num = float(val)
-                if num > 0:
-                    return 'color: green'
-                elif num < 0:
-                    return 'color: red'
-            except:
-                pass
-        return ''
+def highlight(val):
+    if isinstance(val, str):
+        val = val.replace(",", "").replace("+", "").strip()
+        try:
+            num = float(val)
+            if num > 0:
+                return 'color: green'
+            elif num < 0:
+                return 'color: red'
+        except:
+            pass
+    return ''
 
-    thay_doi_cols = [col for col in pivot_2_combined.columns if '(thay đổi)' in col]
+thay_doi_cols = [col for col in pivot_2_combined.columns if '(thay đổi)' in col]
 
-    st.dataframe(
-        pivot_2_combined.style
-            .format(fmt_dict)
-            .applymap(highlight, subset=thay_doi_cols),
-        height=600
-    )
+st.dataframe(
+    pivot_2_combined.style
+        .format(fmt_dict)
+        .applymap(highlight, subset=thay_doi_cols),
+    height=600
+)
 
-with col2:
-    st.header('🛒 Số lượng mua')
-    st.dataframe(
-        sorted_pivot.style.format(lambda x: "" if pd.isna(x) or x == 0 else f"{x:,.0f}"),
-        height=600
-    )
+st.markdown("<br><br>")
 
-    st.markdown("<br>", unsafe_allow_html=True)  # Khoảng cách
-
-    st.subheader("📊 Tổng lãi vay theo ngày")
-    st.line_chart(lai_tong['lai_vay_tong'])
-
-
+# Biểu đồ tổng lãi vay
+st.header("📊 Tổng lãi vay theo ngày")
+st.line_chart(lai_tong['lai_vay_tong'])
