@@ -219,7 +219,6 @@ lai_tong.set_index('ngay', inplace=True)
 
 # Streamlit UI
 col1, col2 = st.columns(2)
-col3,  = st.columns(2)
 
 
 nav_daily_renamed = nav_daily.rename(columns={
@@ -262,7 +261,7 @@ with col2:
     st.dataframe(
         sorted_pivot.style.format(lambda x: "" if pd.isna(x) or x == 0 else f"{x:,.0f}"), height=300)
 
-with col3:
+# with col3:
     st.header('💰 Lãi vay theo ngày')
 # 1. Format có dấu phẩy cho số, trừ các cột "(thay đổi)"
     fmt_dict = {}
@@ -295,7 +294,8 @@ with col3:
             .applymap(highlight, subset=thay_doi_cols)  # tô màu chỉ ở cột "thay đổi"
     ,height=300)
 
-with col4:
+# with col4:
     st.subheader("📊 Tổng lãi vay theo ngày")
     st.line_chart(lai_tong['lai_vay_tong'])
+
 
