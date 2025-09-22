@@ -230,6 +230,9 @@ nav_daily_renamed = nav_daily.rename(columns={
 })
 
 nav_daily_renamed = nav_daily_renamed.fillna("") 
+numeric_columns = ['NAV', 'Lãi lỗ sau cùng', 'Dư nợ hiện tại', 'Giá trị danh mục', 'Tỉ lệ']
+for col in numeric_columns:
+    nav_daily_renamed[col] = pd.to_numeric(nav_daily_renamed[col], errors='coerce')
 
 st.title('🧮 Dashboard Khách hàng')
 st.header('📈 NAV ngày')
@@ -272,6 +275,7 @@ st.dataframe(pivot_2_combined.style.format(fmt_dict, na_rep="")
 
 st.subheader("📊 Tổng lãi vay theo ngày")
 st.line_chart(lai_tong['lai_vay_tong'])
+
 
 
 
