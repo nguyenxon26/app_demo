@@ -241,6 +241,7 @@ print(nav_daily_renamed.apply(lambda x: x.isin([None]).sum()))
 
 
 st.title('🧮 Dashboard Khách hàng')
+st.markdown("<br><br>", unsafe_allow_html=True)
 
 # NAV ngày
 st.header('📈 NAV ngày')
@@ -258,7 +259,7 @@ st.dataframe(
 )
 
 # Khoảng cách lớn giữa các phần
-st.markdown("<br><br>")  # hoặc dùng <br><br> cho khoảng trắng
+st.markdown("<br><br>", unsafe_allow_html=True)
 
 # Số lượng mua
 st.header('🛒 Số lượng mua')
@@ -267,7 +268,7 @@ st.dataframe(
     height=600
 )
 
-st.markdown("<br><br>")
+st.markdown("<br><br>", unsafe_allow_html=True)
 
 # Lãi vay theo ngày (chi tiết)
 st.header('💰 Lãi vay theo ngày')
@@ -300,8 +301,9 @@ st.dataframe(
     height=600
 )
 
-st.markdown("<br><br>")
+st.markdown("<br><br>", unsafe_allow_html=True)
 
 # Biểu đồ tổng lãi vay
 st.header("📊 Tổng lãi vay theo ngày")
 st.line_chart(lai_tong['lai_vay_tong'])
+
