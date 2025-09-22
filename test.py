@@ -242,7 +242,7 @@ st.dataframe(nav_daily_renamed.style.format({
 'Lãi lỗ sau cùng':'{:,.0f}', 
 'Dư nợ hiện tại':'{:,.0f}',
 'Giá trị danh mục':'{:,.0f}',
-'Tỉ lệ': '{:.2%}'})
+'Tỉ lệ': '{:.2%}'},na_rep="")
     .apply(lambda x: ['background-color: lightgreen' if v == x.max() else '' for v in x], 
             subset=[col for col in nav_daily_renamed.columns if col != 'Khách hàng'])
     )
@@ -276,6 +276,7 @@ st.dataframe(pivot_2_combined.style.format(fmt_dict, na_rep="")
 
 st.subheader("📊 Tổng lãi vay theo ngày")
 st.line_chart(lai_tong['lai_vay_tong'])
+
 
 
 
