@@ -123,7 +123,7 @@ pivot = pd.pivot_table(
     index='khach_hang',
     columns='ma',
     aggfunc='sum',
-    fill_value=None,
+#   fill_value=None,
     margins=True,
     margins_name='Tong'
 )
@@ -155,8 +155,8 @@ pivot_2 = pd.pivot_table(
     values='lai_vay_ngay',
     index='khach_hang',
     columns='ngay',
-    aggfunc='sum',
-    fill_value=None,
+    aggfunc='sum'
+    # fill_value=None,
     # margins=True,
     # margins_name='Tong'
 )
@@ -286,3 +286,4 @@ st.dataframe(pivot_2_combined.style.format(fmt_dict, na_rep="")
 
 st.subheader("📊 Tổng lãi vay theo ngày")
 st.line_chart(lai_tong['lai_vay_tong'])
+
