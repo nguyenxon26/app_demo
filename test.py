@@ -6,7 +6,7 @@ st.set_page_config(layout="wide")
 
 conn = duckdb.connect(':memory:')
 
-sheet_id = "1v83uyh132ZbQWdgAgFUMvUdcJwoFGpoYRsr8huxWuoo"
+sheet_id = "1N5Len0S4vxZrzksnZJDImF6rK6--G8YEMPLbbYmmKvs"
 
 gid1 = "1961129161"
 url1 = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid1}"
@@ -306,4 +306,5 @@ st.markdown("<br><br>", unsafe_allow_html=True)
 # Biểu đồ tổng lãi vay
 st.header("📊 Tổng lãi vay theo ngày")
 st.line_chart(lai_tong['lai_vay_tong'])
+
 
