@@ -227,36 +227,27 @@ nav_daily_renamed = nav_daily.rename(columns={
     'ti_le': 'Tỉ lệ'
 })
 
-nav_daily_renamed = nav_daily_renamed.replace([None, pd.NA, "None"], "")  # Handle None and pd.NA
-nav_daily_renamed = nav_daily_renamed.fillna("")  # Handle NaN
-nav_daily_renamed.replace(0, "", inplace=True)  # Handle zeros
+def custom_format(x):
+    if pd.isna(x) or x == 0:
+        return""
+    else:
+        return f"{x:,.0f}"
+    
+def highlight_max(s):
+    is_max = s == s.max(skipna = True)
+    return ['background-color:lightgreen' if v else '' for v in is_max]
 
-# Convert specified columns to numeric, coercing errors to NaN
-numeric_columns = ['NAV', 'Lãi lỗ sau cùng', 'Dư nợ hiện tại', 'Giá trị danh mục', 'Tỉ lệ']
-for col in numeric_columns:
-    nav_daily_renamed[col] = pd.to_numeric(nav_daily_renamed[col], errors='coerce')
+styled_nav = nav_daily_renamed.style.format(custom_format)
 
-# print(nav_daily_renamed.isna().sum())
-print(nav_daily_renamed.apply(lambda x: x.isin([None]).sum()))
-
+for col in nav_daily_renamed.columns[1:]:
+    styled_nav = styled_nav.apply(highlight_max, subset= [col])
 
 st.title('🧮 Dashboard Khách hàng')
 st.markdown("<br><br>", unsafe_allow_html=True)
 
 # NAV ngày
 st.header('📈 NAV ngày')
-st.dataframe(
-    nav_daily_renamed.style.format({
-        'NAV': '{:,.0f}',
-        'Lãi lỗ sau cùng': '{:,.0f}',
-        'Dư nợ hiện tại': '{:,.0f}',
-        'Giá trị danh mục': '{:,.0f}',
-        'Tỉ lệ': '{:.2%}'
-    }, na_rep="")
-    .apply(lambda x: ['background-color: lightgreen' if v == x.max() else '' for v in x],
-           subset=[col for col in nav_daily_renamed.columns if col != 'Khách hàng']),
-    height=600
-)
+st.dataframe(styled_nav, use_container_width= True, height= 600)
 
 # Khoảng cách lớn giữa các phần
 st.markdown("<br><br>", unsafe_allow_html=True)
@@ -306,5 +297,6 @@ st.markdown("<br><br>", unsafe_allow_html=True)
 # Biểu đồ tổng lãi vay
 st.header("📊 Tổng lãi vay theo ngày")
 st.line_chart(lai_tong['lai_vay_tong'])
+
 
 
