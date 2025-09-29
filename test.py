@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st 
 import duckdb
+from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
 
 st.set_page_config(layout="wide")
 
@@ -65,10 +66,18 @@ NAV_batch['ngay'] = pd.to_datetime(NAV_batch['ngay'],errors='coerce')
 conn.register('key_in',key_in)
 conn.register('NAV_batch',NAV_batch)
 
+# ----------------------
 
 
-# 1.Tạo bảng NAV real time
+# Streamlit UI
+st.title('🧮 Dashboard Khách hàng')
+st.markdown("<br><br>", unsafe_allow_html=True)
 
+# ---------------------------
+
+# 1.NAV NGÀY
+
+# Tạo bảng NAV real time
 query1 ='''
 select a.*, 
 b.lai_lo_sau_cung, 
@@ -96,9 +105,89 @@ on a.khach_hang = b.khach_hang
 '''
 nav_daily = conn.execute(query1).fetchdf()
 
+nav_daily_renamed = nav_daily.rename(columns={
+    'khach_hang' : 'Khách hàng',
+    'lai_lo_sau_cung': 'Lãi lỗ sau cùng',
+    'du_no_hien_tai': 'Dư nợ hiện tại',
+    'gia_tri_danh_muc': 'Giá trị danh mục',
+    'ti_le': 'Tỉ lệ'
+})
 
-# 2.Tạo bảng checkend day
+nav_daily_renamed = nav_daily_renamed.replace([None, pd.NA, "None"], 0)  # Handle None and pd.NA
+nav_daily_renamed = nav_daily_renamed.fillna(0)  # Handle NaN
 
+# Convert specified columns to numeric, coercing errors to NaN
+numeric_columns = ['NAV', 'Lãi lỗ sau cùng', 'Dư nợ hiện tại', 'Giá trị danh mục', 'Tỉ lệ']
+for col in numeric_columns:
+    nav_daily_renamed[col] = pd.to_numeric(nav_daily_renamed[col], errors='coerce').fillna(0)
+
+max_values = {col: nav_daily_renamed[col].max() for col in numeric_columns}
+
+format_numeric = JsCode("""
+function(params) {
+    if (params.value === 0 || params.value === null) return '';
+    if (params.colDef.field === 'Tỉ lệ') {
+        return (params.value * 100).toFixed(2) + '%';
+    }
+    return params.value.toLocaleString();
+}
+""")
+
+highlight_max_template = """
+function(params) {{
+    if (params.value === {max_val}) {{
+        return {{
+            'backgroundColor': 'lightgreen',
+            'textAlign': 'left'
+        }};
+    }}
+    return {{
+        'textAlign': 'left'
+    }};
+}}
+"""
+
+gb = GridOptionsBuilder.from_dataframe(nav_daily_renamed)
+gb.configure_default_column(
+    editable=False,
+    filter=True,
+    resizable=True,
+    cellStyle={'textAlign': 'left'}  # mặc định căn trái
+)
+gb.configure_column('Khách hàng', pinned='left', width=150)
+
+for col in numeric_columns:
+    cellStyle_js = JsCode(highlight_max_template.format(max_val=max_values[col]))
+    gb.configure_column(
+        col,
+        cellRenderer=format_numeric,
+        cellStyle=cellStyle_js,  # đã có căn trái trong JS
+        width=130,
+    )
+
+grid_options = gb.build()
+
+st.header('📈 NAV ngày')
+AgGrid(
+    nav_daily_renamed,
+    gridOptions=grid_options,
+    height=600,
+    enable_enterprise_modules=False,
+    fit_columns_on_grid_load=True,
+    theme='streamlit',
+    allow_unsafe_jscode=True
+)
+
+
+
+# ---------------------
+st.markdown("<br><br>", unsafe_allow_html=True)
+# ---------------------------
+
+
+# 2.SỐ LƯỢNG MUA
+
+# Tạo bảng checkend day
 query2 = '''
 select khach_hang, ma, so_luong_mua
 from key_in
@@ -121,20 +210,41 @@ pivot = pd.pivot_table(
     margins_name='Tong'
 )
 
-# Sắp xếp khách hàng (rows) theo tổng mua giảm dần
+#Sắp xếp rows theo tổng mua giảm dần
 pivot_no_total = pivot.drop('Tong')
 sorted_rows = pivot_no_total.sort_values(by='Tong', ascending=False).index
 
-# Sắp xếp sản phẩm (columns) theo tổng mua giảm dần
+#Sắp xếp columns theo tổng giảm dần
 total_row = pivot.loc['Tong'].drop('Tong')
 sorted_columns = total_row.sort_values(ascending=False).index
+
+#Reindex lại bảng
 sorted_pivot = pivot.reindex(
     index=list(sorted_rows) + ['Tong'],
-    columns=list(sorted_columns) 
+    columns=list(sorted_columns)
 )
 
+#Xử lý: thay số 0 hoặc NaN bằng chuỗi trống "", format số có dấu phẩy
+def format_cell(val):
+    if pd.isna(val) or val == 0:
+        return ""
+    else:
+        return f"{val:,.0f}"
 
-# 3.Tạo bảng lãi vay theo ngày
+formatted_pivot = sorted_pivot.applymap(format_cell)
+
+st.header('🛒 Số lượng mua')
+
+st.dataframe(formatted_pivot, height=600)
+
+# -------------------------
+st.markdown("<br><br>", unsafe_allow_html=True)
+# --------------------------------
+
+
+# 3.LÃI VAY THEO NGÀY
+
+# Tạo bảng lãi vay theo ngày
 query3 = '''
 select khach_hang,
     ngay,
@@ -154,27 +264,27 @@ pivot_2 = pd.pivot_table(
     # margins=True,
     # margins_name='Tong'
 )
-# 1. Sắp xếp lại cột theo thời gian tăng dần
+# Sắp xếp lại cột theo thời gian tăng dần
 pivot_2 = pivot_2.sort_index(axis=1)
 
-# 2. Sắp xếp theo tổng hàng
+# Sắp xếp theo tổng hàng
 pivot_2['__tong_tam__'] = pivot_2.sum(axis=1)
 pivot_2 = pivot_2.sort_values(by='__tong_tam__', ascending=False).drop(columns='__tong_tam__')
 
-# 3. Thêm dòng tổng
+# Thêm dòng tổng
 tong_hang = pd.DataFrame(pivot_2.sum(axis=0)).T
 tong_hang.index = ['Tổng']
 pivot_2 = pd.concat([pivot_2, tong_hang])
 
-# 4. Chuyển cột về datetime nếu chưa
+# Chuyển cột về datetime nếu chưa
 pivot_2.columns = pd.to_datetime(pivot_2.columns)
 
-# 5. Tính thay đổi tuyệt đối
+# Tính thay đổi tuyệt đối
 pivot_2_no_total = pivot_2.drop(index='Tổng')
 pivot_2_diff = pivot_2_no_total.diff(axis=1)
 pivot_2_diff = pd.concat([pivot_2_diff, pd.DataFrame(index=['Tổng'], columns=pivot_2_diff.columns)])
 
-# 6. Tạo cột xen kẽ: giá trị + thay đổi tuyệt đối
+# Tạo cột xen kẽ: giá trị + thay đổi tuyệt đối
 merged_cols = []
 for col in pivot_2.columns:
     col_str = col.strftime('%d/%m/%Y')
@@ -182,7 +292,7 @@ for col in pivot_2.columns:
     if col != pivot_2.columns[0]:
         merged_cols.append(f'{col_str} (thay đổi)')
 
-# 7. Tạo DataFrame kết hợp
+# Tạo DataFrame kết hợp
 pivot_2_combined = pd.DataFrame(index=pivot_2.index, columns=merged_cols)
 
 for col in pivot_2.columns:
@@ -192,7 +302,7 @@ for col in pivot_2.columns:
         diff_series = pivot_2_diff[col].apply(lambda x: f"+{x:,.0f}" if x > 0 else (f"{x:,.0f}" if x < 0 else ""))
         pivot_2_combined[f'{col_str} (thay đổi)'] = diff_series
 
-# 8. Đảo ngược thứ tự ngày
+# Đảo ngược thứ tự ngày
 sorted_dates = sorted(pivot_2.columns, reverse=True)
 final_col_order = []
 for col in sorted_dates:
@@ -204,6 +314,74 @@ for col in sorted_dates:
 
 pivot_2_combined = pivot_2_combined[final_col_order]
 
+st.header('💰 Lãi vay theo ngày')
+
+pivot_2_combined = pivot_2_combined.copy()
+pivot_2_combined['khach_hang'] = pivot_2_combined.index
+pivot_2_combined = pivot_2_combined.reset_index(drop=True)
+
+# Tạo GridOptionsBuilder
+gb = GridOptionsBuilder.from_dataframe(pivot_2_combined)
+
+# 👇 Căn trái + tự động cao dòng nếu wrapText
+gb.configure_default_column(
+    cellStyle={'textAlign': 'left', 'whiteSpace': 'normal'},
+    resizable=True,
+    wrapText=True,
+    autoHeight=True,
+)
+
+# ✅ Định nghĩa các JS để ẩn số 0 và highlight màu
+js_zero_to_empty = JsCode("""
+    function(params) {
+        if (params.value === 0 || params.value === null || params.value === undefined) {
+            return '';
+        }
+        return params.value.toLocaleString();
+    }
+""")
+
+js_highlight = JsCode("""
+    function(params) {
+        if (params.value == null || params.value === '') return {};
+        let v = params.value;
+        if (typeof v === 'string') {
+            v = parseFloat(v.replace(/,/g, '').replace('+', ''));
+        }
+        if (v > 0) return { color: 'green' };
+        else if (v < 0) return { color: 'red' };
+        return {};
+    }
+""")
+
+# ✅ Cấu hình từng cột
+for col in pivot_2_combined.columns:
+    if col == 'khach_hang':
+        gb.configure_column(col, pinned='left', min_width=180)
+    elif '(thay đổi)' in col:
+        gb.configure_column(col, cellRenderer=js_zero_to_empty, cellStyle=js_highlight, min_width=120)
+    else:
+        gb.configure_column(col, cellRenderer=js_zero_to_empty, min_width=90)
+
+# Build grid config
+gridOptions = gb.build()
+
+# ✅ Hiển thị AgGrid
+AgGrid(
+    pivot_2_combined,
+    gridOptions=gridOptions,
+    height=600,
+    fit_columns_on_grid_load=False,  # Không auto-fit toàn bảng để giữ min_width
+    allow_unsafe_jscode=True
+) 
+
+
+# -----------------
+st.markdown("<br><br>", unsafe_allow_html=True)
+# ----------------
+
+
+# 4.TỔNG LÃI VAY
 
 # Tạo bảng tổng lãi vay theo ngày
 query4 = '''
@@ -215,97 +393,5 @@ group by ngay
 lai_tong = conn.execute(query4).fetchdf()
 lai_tong.set_index('ngay', inplace=True)
 
-
-
-# Streamlit UI
-
-nav_daily_renamed = nav_daily.rename(columns={
-    'khach_hang' : 'Khách hàng',
-    'lai_lo_sau_cung': 'Lãi lỗ sau cùng',
-    'du_no_hien_tai': 'Dư nợ hiện tại',
-    'gia_tri_danh_muc': 'Giá trị danh mục',
-    'ti_le': 'Tỉ lệ'
-})
-
-nav_daily_renamed = nav_daily_renamed.replace([None, pd.NA, "None"], "")  # Handle None and pd.NA
-nav_daily_renamed = nav_daily_renamed.fillna("")  # Handle NaN
-nav_daily_renamed.replace(0, "", inplace=True)  # Handle zeros
-
-# Convert specified columns to numeric, coercing errors to NaN
-numeric_columns = ['NAV', 'Lãi lỗ sau cùng', 'Dư nợ hiện tại', 'Giá trị danh mục', 'Tỉ lệ']
-for col in numeric_columns:
-    nav_daily_renamed[col] = pd.to_numeric(nav_daily_renamed[col], errors='coerce')
-
-# print(nav_daily_renamed.isna().sum())
-print(nav_daily_renamed.apply(lambda x: x.isin([None]).sum()))
-
-st.title('🧮 Dashboard Khách hàng')
-st.markdown("<br><br>", unsafe_allow_html=True)
-
-# NAV ngày
-st.header('📈 NAV ngày')
-st.dataframe(
-    nav_daily_renamed.style.format({
-        'NAV': '{:,.0f}',
-        'Lãi lỗ sau cùng': '{:,.0f}',
-        'Dư nợ hiện tại': '{:,.0f}',
-        'Giá trị danh mục': '{:,.0f}',
-        'Tỉ lệ': '{:.2%}'
-    }, na_rep="")
-    .apply(lambda x: ['background-color: lightgreen' if v == x.max() else '' for v in x],
-           subset=[col for col in nav_daily_renamed.columns if col != 'Khách hàng']),
-    height=600
-)
-
-# Khoảng cách lớn giữa các phần
-st.markdown("<br><br>", unsafe_allow_html=True)
-
-# Số lượng mua
-st.header('🛒 Số lượng mua')
-st.dataframe(
-    sorted_pivot.style.format(lambda x: "" if pd.isna(x) or x == 0 else f"{x:,.0f}"),
-    height=600
-)
-
-st.markdown("<br><br>", unsafe_allow_html=True)
-
-# Lãi vay theo ngày (chi tiết)
-st.header('💰 Lãi vay theo ngày')
-
-# Định dạng & tô màu các cột
-fmt_dict = {}
-for col in pivot_2_combined.columns:
-    if '(thay đổi)' not in col:
-        fmt_dict[col] = lambda x: '' if pd.isna(x) or x == 0 else f'{x:,.0f}'
-
-def highlight(val):
-    if isinstance(val, str):
-        val = val.replace(",", "").replace("+", "").strip()
-        try:
-            num = float(val)
-            if num > 0:
-                return 'color: green'
-            elif num < 0:
-                return 'color: red'
-        except:
-            pass
-    return ''
-
-thay_doi_cols = [col for col in pivot_2_combined.columns if '(thay đổi)' in col]
-
-st.dataframe(
-    pivot_2_combined.style
-        .format(fmt_dict)
-        .applymap(highlight, subset=thay_doi_cols),
-    height=600
-)
-
-st.markdown("<br><br>", unsafe_allow_html=True)
-
-# Biểu đồ tổng lãi vay
 st.header("📊 Tổng lãi vay theo ngày")
 st.line_chart(lai_tong['lai_vay_tong'])
-
-
-
-
