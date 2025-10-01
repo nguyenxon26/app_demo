@@ -167,16 +167,21 @@ for col in numeric_columns:
 
 grid_options = gb.build()
 
+row_height = 30
+num_rows = len(nav_daily_renamed)
+table_height = row_height * num_rows
+
 st.header('📈 NAV ngày')
 AgGrid(
     nav_daily_renamed,
     gridOptions=grid_options,
-    height=600,
+    height=table_height,
     enable_enterprise_modules=False,
     fit_columns_on_grid_load=True,
     theme='streamlit',
     allow_unsafe_jscode=True
 )
+
 
 
 
@@ -366,11 +371,16 @@ for col in pivot_2_combined.columns:
 # Build grid config
 gridOptions = gb.build()
 
+row_height = 35
+num_rows = len(pivot_2_combined)
+table_height = row_height * num_rows
+
+
 # ✅ Hiển thị AgGrid
 AgGrid(
     pivot_2_combined,
     gridOptions=gridOptions,
-    height=600,
+    height=table_height,
     fit_columns_on_grid_load=False,  # Không auto-fit toàn bảng để giữ min_width
     allow_unsafe_jscode=True
 ) 
