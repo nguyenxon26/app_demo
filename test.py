@@ -169,7 +169,7 @@ grid_options = gb.build()
 
 row_height = 30.5
 num_rows = len(nav_daily_renamed)
-table_height = row_height * num_rows
+table_height = row_height * num_rows -20
 
 st.header('📈 NAV ngày')
 AgGrid(
@@ -373,7 +373,7 @@ gridOptions = gb.build()
 
 row_height = 31
 num_rows = len(pivot_2_combined)
-table_height = row_height * num_rows
+table_height = row_height * num_rows -40
 
 
 # ✅ Hiển thị AgGrid
@@ -405,6 +405,7 @@ lai_tong.set_index('ngay', inplace=True)
 
 st.header("📊 Tổng lãi vay theo ngày")
 st.line_chart(lai_tong['lai_vay_tong'])
+
 
 
 
